@@ -1,5 +1,5 @@
 <template>
-    <el-aside style="width: 15%">
+    <el-aside style="width: 18%">
         <el-menu
             background-color="#545c64"
             text-color="#fff"

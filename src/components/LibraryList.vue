@@ -49,23 +49,7 @@
         methods:{
             // 管理 按钮的跳转函数
             jumpTo:function (row) {
-                switch (row.name){
-                    // 长江学者
-                    case 'GG_ZJ_CJ':
-                        window.location.href='/admin/';
-                        break;
-                    //    中科院院士
-                    case 'GG_ZJ_KXYYS':
-                        window.location.href='/admin/acaofsci';
-                        break;
-                    //    工程院院士
-                    case 'GG_ZJ_GCYYS':
-                        window.location.href='/admin/acaofsci';
-                        break;
-                    default: //其它默认跳转到长江学者列表
-                        window.location.href='/admin/18';
-                        break;
-                }
+                window.location.href='/admin/'+row.id;
             },
             // 点击页数时事件触发
             handelCurrentChange(val){

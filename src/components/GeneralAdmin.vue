@@ -11,7 +11,7 @@
                         <!--更新源配置-->
                         <i class="el-icon-setting" style="margin-right: 1rem;" @click="dialogOfConfig=true"></i>
                         <!--获取更新数据-->
-                        <el-button type="primary" round @click="showUpdatingDialog">更新</el-button>
+                        <el-button type="primary" round @click="showUpdatingDialog" :loading="updateLoading">更新</el-button>
                         <!--查看更新结果-->
                         <el-button type="primary" round
                                    @click="viewLatestData">
@@ -63,7 +63,7 @@
                 </div>
             </el-dialog>
             <!--添加新的院士信息对话框-->
-            <el-dialog title="新增院士信息" :visible.sync="dialogOfAddingNewAca">
+            <el-dialog title="新增信息" :visible.sync="dialogOfAddingNewAca">
                 <el-form :model="detailedData">
                     <el-form-item v-for="(value, key) in editableSetting" :label='value.name+": " ' label-width="120px" :key="key">
                         <!--可编辑的显示输入框-->
@@ -170,6 +170,7 @@
                 saveLoading: false,      // 保存更新的信息加载按钮
                 getLatestDataLoading: false,     // 获取最新数据加载状态
                 saveUpdatingConfigLoading: false,    // 保存更新配置设置
+                updateLoading:false,            //更新运行状态
                 // 分页控制
                 pageNum: 1,
                 pageSize: 20,
@@ -185,7 +186,9 @@
                 // 检索设置
                 searchKey: null,  // 检索的key
                 searchContent: '',   // 检索的内容
-                searchingData: {}    // 搜索传递的内容
+                searchingData: {},    // 搜索传递的内容
+                //定时器
+                updateTimer:{}
             }
         },
         components: {
@@ -229,7 +232,7 @@
                     this.axios.get(requestUrl)
                         .then(
                             (res) => {
-                                if (res.data === true) {
+                                if (res.data !== undefined) {
                                     this.$message({
                                         type: 'success',
                                         message: '删除成功!'
@@ -336,7 +339,8 @@
                             },
                         }).then(
                         (res) => {
-                            if (res.data === true) {   // 添加成功
+
+                            if (res.data !== undefined) {   // 添加成功
                                 this.$notify({
                                     title: '成功',
                                     message: '信息更新成功',
@@ -385,7 +389,8 @@
                     // 显示按钮加载
                     this.addLoading = true;
                     // flag表示id的类型，1为整型，2为str
-                    let requestUrl = this.apiUrl + '/add/' + this.$route.params.tableId + '?flag=' + (this.idSetting.isDigit === 'true' ? 1 : 2);
+                    let requestUrl = this.apiUrl + '/add/' + this.$route.params.tableId ;
+                        //+ '?flag=' + (this.idSetting.isDigit === 'true' ? 1 : 2);
                     this.axios.post(requestUrl, this.detailedData,
                         {
                             headers: {
@@ -393,7 +398,8 @@
                             },
                         }).then(
                         (res) => {
-                            if (res.data === true) {   // 添加成功
+                            console.log(res.data);
+                            if (res.data !== undefined) {   // 添加成功
                                 this.$notify({
                                     title: '成功',
                                     message: '添加成功',
@@ -432,34 +438,74 @@
                         });
                 }
             },
-            // 获取最新数据
-            getLatestData: function () {
-                this.getLatestDataLoading = true;
-                this.axios.get(this.apiUrl + '/generateUpgrade/' + this.$route.params.tableId + '?year=' + this.updatingConfig.year.value + '&flag=' + (this.idSetting.isDigit === 'true' ? 1 : 2))
+            //查询爬虫运行状态
+            getSpiderProcessStatus:function(tid){
+                this.axios.get(this.apiUrl + '/generateUpgrade/result/' + tid)
                     .then(
                         (res) => {
-                            if(res.data >0){
+                            if(res.data){
+                                clearInterval(this.updateTimer[this.$route.params.tableId]);
                                 this.$notify({
                                     title: '成功',
                                     message: '成功获取最新数据，请查看更新结果',
                                     type: 'success',
                                     duration: 4000
                                 });
+                                this.updateLoading = false;
                                 this.getLatestDataLoading = false;
                                 this.dialogOfGetLatestData = false;
                             }
-                            // if (res.data === true) {
-                            //
-                            // }
                             // else {
                             //     this.$notify({
-                            //         title: '失败',
-                            //         message: '获取最新数据失败',
+                            //         title: '更新失败',
+                            //         message: '启动爬虫失败',
                             //         type: 'error',
                             //         duration: 4000
                             //     });
-                            //     this.getLatestDataLoading = false;
                             // }
+                        }
+                    )
+                    .catch(
+                        (error) => {
+                            console.log(error);
+                            this.$notify({
+                                title: '失败',
+                                message: '网络异常',
+                                type: 'warning',
+                                duration: 4000
+                            });
+                            this.getLatestDataLoading = false;
+                        }
+                    );
+            },
+            // 获取最新数据
+            getLatestData: function () {
+                this.updateLoading = true;
+
+                this.axios.get(this.apiUrl + '/generateUpgrade/' + this.$route.params.tableId + '?year=' + this.updatingConfig.year.value + '&flag=' + (this.idSetting.isDigit === 'true' ? 1 : 2))
+                    .then(
+                        (res) => {
+                            if(res.data >0){
+                                let __sto = setInterval;
+                                let tableId = this.$route.params.tableId;
+                                window.setInterval = function(callback,timeout,param){
+                                    let args = Array.prototype.slice.call(arguments,2);
+                                    let _cb = function(){
+                                        callback.apply(null,args);
+                                    };
+                                    return __sto(_cb,timeout);
+                                };
+                                this.updateTimer[this.$route.params.tableId] = window.setInterval(this.getSpiderProcessStatus,1000,res.data);
+                                this.dialogOfGetLatestData = false;
+                            }
+                            else {
+                                this.$notify({
+                                            title: '更新失败',
+                                            message: '启动爬虫失败',
+                                            type: 'error',
+                                            duration: 4000
+                                });
+                            }
                         }
                     )
                     .catch(
