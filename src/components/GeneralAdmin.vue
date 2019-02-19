@@ -438,27 +438,31 @@
                         });
                 }
             },
+            // 删除爬虫状态定时查询器
+            removeSpiderProcessWatcher:function(tableId){
+                clearInterval(this.updateTimer[tableId]);
+                this.updateLoading = false;
+            },
             //查询爬虫运行状态
             getSpiderProcessStatus:function(tid){
                 this.axios.get(this.apiUrl + '/generateUpgrade/result/' + tid)
                     .then(
                         (res) => {
                             if(res.data){
-                                clearInterval(this.updateTimer[this.$route.params.tableId]);
+                                this.removeSpiderProcessWatcher(this.$route.params.tableId);
                                 this.$notify({
                                     title: '成功',
                                     message: '成功获取最新数据，请查看更新结果',
                                     type: 'success',
                                     duration: 4000
                                 });
-                                this.updateLoading = false;
                                 this.getLatestDataLoading = false;
                                 this.dialogOfGetLatestData = false;
                             }
                             // else {
                             //     this.$notify({
                             //         title: '更新失败',
-                            //         message: '启动爬虫失败',
+                            //         message: '爬虫运行过程中发生了错误',
                             //         type: 'error',
                             //         duration: 4000
                             //     });
@@ -467,6 +471,7 @@
                     )
                     .catch(
                         (error) => {
+                            this.removeSpiderProcessWatcher(this.$route.params.tableId);
                             console.log(error);
                             this.$notify({
                                 title: '失败',
@@ -481,13 +486,11 @@
             // 获取最新数据
             getLatestData: function () {
                 this.updateLoading = true;
-
-                this.axios.get(this.apiUrl + '/generateUpgrade/' + this.$route.params.tableId + '?year=' + this.updatingConfig.year.value + '&flag=' + (this.idSetting.isDigit === 'true' ? 1 : 2))
+                this.axios.get(this.apiUrl + '/generateUpgrade/' + this.$route.params.tableId)
                     .then(
                         (res) => {
                             if(res.data >0){
                                 let __sto = setInterval;
-                                let tableId = this.$route.params.tableId;
                                 window.setInterval = function(callback,timeout,param){
                                     let args = Array.prototype.slice.call(arguments,2);
                                     let _cb = function(){
@@ -497,6 +500,12 @@
                                 };
                                 this.updateTimer[this.$route.params.tableId] = window.setInterval(this.getSpiderProcessStatus,1000,res.data);
                                 this.dialogOfGetLatestData = false;
+                                this.$notify({
+                                    title: '正在更新',
+                                    message: '启动爬虫成功，正在更新数据，这需要一些时间',
+                                    type: 'success',
+                                    duration: 2000
+                                });
                             }
                             else {
                                 this.$notify({
@@ -627,10 +636,35 @@
                                 this.totalSize = pageSettingInfo.totalSize;
                                 // 页面名字
                                 this.pageName = pageSettingInfo.pageName;
-                                // 列表展示信息配置
-                                this.listSetting = JSON.parse(pageSettingInfo.show);
                                 // 详细信息配置
+                                console.log(pageSettingInfo.all);
                                 this.detailedSetting = JSON.parse(pageSettingInfo.all);
+                                // 列表展示信息配置
+                                if(pageSettingInfo.show !==undefined){
+                                    let showArray = JSON.parse(pageSettingInfo.show);
+                                    if((typeof showArray === 'object')&& showArray.constructor === Array){
+                                        for(let index in showArray){
+                                            if(showArray.hasOwnProperty(index) && showArray[index] in this.detailedSetting){
+                                                this.listSetting[showArray[index]]=this.detailedSetting[showArray[index]].name;
+                                            }
+                                        }
+                                    }else {
+                                        //字典
+                                        for(let key in showArray){
+                                            if(showArray.hasOwnProperty(key) && key in this.detailedSetting){
+                                                this.listSetting[key]=showArray[key];
+                                            }
+                                        }
+                                    }
+                                }else {
+                                    //当配置中不存在show项时全部展示
+                                    for(let key in this.detailedSetting){
+                                        if(this.detailedSetting.hasOwnProperty(key)){
+                                            let value = this.detailedSetting[key];
+                                            this.listSetting[key]=value.name;
+                                        }
+                                    }
+                                }
                                 // 可编辑信息配置
                                 Object.keys(this.detailedSetting).forEach(
                                     (key) => {
@@ -638,10 +672,13 @@
                                             this.editableSetting[key] = this.detailedSetting[key];
                                         }
                                     });
-
                                 // id设置
-                                this.idSetting = JSON.parse(pageSettingInfo.index);
+                                if(pageSettingInfo.index !==undefined){
+                                    console.log(pageSettingInfo.index);
+                                    this.idSetting = JSON.parse(pageSettingInfo.index);
+                                }
                                 // 更新设置
+
                                 this.updatingConfig = JSON.parse(pageSettingInfo.upgrade);
                                 this.pageJumping();
                             }

@@ -17,11 +17,11 @@
             </el-header>
             <!--new数据详细信息对话框-->
             <el-dialog title="新增数据更新信息" :visible.sync="dialogOfNewData">
-                <!--保证this.detailedDatab不是一个空对象，否则在初始化绑定时会报错-->
+                <!--保证this.detailedData不是一个空对象，否则在初始化绑定时会报错-->
                 <el-form label-width="5rem" :model="detailedData" v-if='JSON.stringify(this.detailedData)!=="{}" '>
                     <el-form-item v-for="(value, key) in detailedSetting" :label='value.name+": " ' :key="key">
-                        <el-input v-if='value.modify==="true" ' auto-complete="off" type="textarea" autosize v-model="detailedData[key].newValue"></el-input>
-                        <span v-else class="span1">{{detailedData[key].newValue}}</span>
+                        <el-input v-if='value.modify==="true" ' auto-complete="off" type="textarea" autosize v-model="detailedData.oriData[key]"></el-input>
+                        <span v-else class="span1">{{detailedData.oriData[key]}}</span>
                     </el-form-item>
                 </el-form>
                 <div slot="footer" class="dialog-footer">
@@ -35,7 +35,7 @@
                 <!--保证this.detailedDatab不是一个空对象，否则在初始化绑定时会报错-->
                 <el-form label-width="5rem" :model="detailedData" v-if='JSON.stringify(this.detailedData)!=="{}" '>
                     <el-form-item v-for="(value, key) in detailedSetting" :label='value.name+": " ' :key="key">
-                        <span class="span1">{{detailedData[key].newValue}}</span>
+                        <span class="span1">{{detailedData.oriData[key]}}</span>
                     </el-form-item>
                 </el-form>
                 <div slot="footer" class="dialog-footer">
@@ -43,35 +43,44 @@
                 </div>
             </el-dialog>
             <!--update数据详细信息对话框-->
-            <el-dialog title="数据更新信息" :visible.sync="dialogOfUpdateData">
-                <el-form label-width="5rem" :model="detailedData" v-if='JSON.stringify(this.detailedData)!=="{}" '>
-                    <el-row>
-                        <el-col :span="12">
-                            <el-row style="font-size: 20px;text-align: center">原数据</el-row>
-                            <el-row>
-                                <el-form-item v-for="(value, key) in detailedSetting" :key="key" :label='value.name+": " ' style="margin-bottom: 0;">
-                                    <span class="span1">{{detailedData[key].oldValue}}</span>
-                                </el-form-item>
-                            </el-row>
-                        </el-col>
-                        <el-col :span="12" style="border-left: 2px solid #eee">
-                            <el-row style="font-size: 20px;text-align: center">新数据</el-row>
-                            <el-form-item v-for="(value, key) in detailedSetting" :key="key">
-                                <el-tag slot="label" type="success" v-if='detailedData[key].status==="update" '>
-                                    {{value.name+": "}}
-                                </el-tag>
-                                <label slot="label" v-else>
-                                    {{value.name+": "}}
-                                </label>
-                                <el-input v-if='value.modify==="true" ' auto-complete="off" type="textarea" autosize v-model="detailedData[key].newValue"></el-input>
-                                <span v-else class="span1">{{detailedData[key].newValue}}</span>
-                            </el-form-item>
-                        </el-col>
-                    </el-row>
-                </el-form>
+            <!--TODO-->
+            <el-dialog title="更新详情" :visible.sync="dialogOfUpdateData" width="50%">
+                <!--原数据-->
+                <el-table border
+                          highlight-current-row
+                          v-loading="listLoading"
+                          element-loading-text="拼命加载更新结果中..."
+                          :data="[detailedData.oriData]">
+                    <!--展示数据信息列-->
+                    <el-table-column v-for="(value, key) in listSetting" :label="value" :key="key">
+                        <template slot-scope="scope">
+                            <p class="p1">{{typeof (scope.row[key])!=='undefined'?scope.row[key]:""}}</p>
+                        </template>
+                    </el-table-column>
+                </el-table>
+                <!--相似数据-->
+                <el-table border
+                          highlight-current-row
+                          v-loading="listLoading"
+                          element-loading-text="拼命加载更新结果中..."
+                          :data="detailedData.data">
+                    <!--展示数据信息列-->
+                    <el-table-column v-for="(value, key) in listSetting" :label="value" :key="key">
+                        <template slot-scope="scope">
+                            <p class="p1">{{typeof (scope.row[key])!=='undefined'?scope.row[key]:""}}</p>
+                        </template>
+                    </el-table-column>
+
+
+                    <el-table-column label="选中">
+                        <template slot-scope="scope">
+                            <el-radio-button v-bind:true-value="scope.$index" v-model="updateDetailSelectIndex"> {{scope.$index}}</el-radio-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
                 <div slot="footer" class="dialog-footer">
-                    <el-button @click="dialogOfUpdateData=false">取 消</el-button>
-                    <el-button type="primary" @click="submitModification" v-loading="submitModificationLoading">提 交</el-button>
+                    <el-button @click="dialogOfUpdateData = false">取 消</el-button>
+                    <el-button type="primary">保 存</el-button>
                 </div>
             </el-dialog>
             <!--提示无更新结果-->
@@ -131,7 +140,7 @@
                     <!--展示数据信息列-->
                     <el-table-column v-for="(value, key) in listSetting" :label="value" :key="key">
                         <template slot-scope="scope">
-                            <p class="p1">{{typeof (scope.row.data[key])!=='undefined'?scope.row.data[key].newValue:key}}</p>
+                            <p class="p1">{{typeof (scope.row.oriData[key])!=='undefined'?scope.row.oriData[key]:""}}</p>
                         </template>
                     </el-table-column>
                     <!--数据状态列-->
@@ -267,6 +276,8 @@
                 isSavingAllData: false, // 是否正在保存所有更新结果
                 savingPercentage: 0, // 更新进度
                 ws: null,    // 保存所有结果的WebSocket
+                //更新详情
+                updateDetailSelectIndex: 1,//选中序号
             }
         },
         components: {
@@ -286,18 +297,18 @@
             },
             // 弹出展示新增数据详细信息对话框
             showDialogOfNewData: function (rowData, rowIndex) {
-                this.detailedData = JSON.parse(JSON.stringify(rowData));
+                this.detailedData = this.storeData[rowIndex];
                 this.modifyingRowIndex = rowIndex;
                 this.dialogOfNewData = true;
             },
             // 弹出saved数据详细信息对话框
             showDialogOfSavedData: function (rowData) {
-                this.detailedData = JSON.parse(JSON.stringify(rowData));
+                this.detailedData = this.storeData[rowIndex];
                 this.dialogOfSavedData = true;
             },
             // 弹出update数据详细信息对话框
             showDialogOfUpdateData: function (rowData, rowIndex) {
-                this.detailedData = JSON.parse(JSON.stringify(rowData));
+                this.detailedData = this.storeData[rowIndex];
                 this.modifyingRowIndex = rowIndex;
                 this.dialogOfUpdateData = true;
             },
@@ -308,13 +319,15 @@
                 let tempIndex = this.modifyingRowIndex;
                 let tempData = {};
                 for (let key in this.detailedData) {
-                    tempData[key] = this.detailedData[key].newValue;
+                    tempData[key] = this.detailedData.oriData[key];
                 }
-                this.axios.post(this.apiUrl + '/upgrade/modify/' + this.$route.params.tableId + '?index=' + tempIndex, tempData)
+                let modifyInfo={"op":"UPDATE","index":tempIndex,"value":tempData};
+                this.axios.post(this.apiUrl + '/redis/modify/' + this.$route.params.tableId , [JSON.stringify(modifyInfo)],
+                    {headers: {'Content-Type': 'application/json'}})
                     .then(
                         (res) => {
                             if (res.status === 200) {
-                                if (res.data === true) {
+                                if (res.data.indexOf(tempIndex) > -1) {
                                     this.$notify({
                                         title: '成功',
                                         message: '修改信息成功',
@@ -326,7 +339,8 @@
                                         (x) => {
                                             return x['index'] === tempIndex;
                                         });
-                                    this.$set(this.storeData[index], 'data', this.detailedData);
+                                    //TODO Converting circular structure to JSON
+                                    // this.$set(this.storeData[index], 'data', this.detailedData);
                                     this.submitModificationLoading = false;
                                     // 两种对话框都保存
                                     this.dialogOfNewData = false;
@@ -362,9 +376,9 @@
                     type: 'info'
                 }).then(() => {
                     let tempIndex = rowIndex;
-                    let requestUrl = this.apiUrl + '/upgradeSave/' + this.$route.params.tableId +
-                        '?index=' + tempIndex + '&flag=' + (this.idSetting.isDigit === 'true' ? 1 : 2);
-                    this.axios.get(requestUrl)
+                    let requestUrl = this.apiUrl + '/redis/save/' + this.$route.params.tableId +
+                        '?index=' + tempIndex;
+                    this.axios.put(requestUrl)
                         .then(
                             (res) => {
                                 if (res.data === true) {
@@ -423,8 +437,11 @@
                     this.isSavingAllData = true;  // 开始保存所有更新结果
                     let wsUrl = this.apiUrl.replace('http', 'ws') + '/websocket/' + this.$route.params.tableId;
                     this.ws = new WebSocket(wsUrl);     // 创建websocket对象
+                    let params = {"op":"upgradeSave","index":[1]};
                     this.ws.onopen = () => {    // 先发送一个消息，开始保存所有更新数据
-                        this.ws.send('start');
+                        console.log('send');
+                        console.log(JSON.stringify(params));
+                        this.ws.send(JSON.stringify(params));
                     };
                     let savingComplete=false;   // 统计是否完成全部保存，防止ws的断开
                     this.ws.onmessage = (event) => {
@@ -474,7 +491,8 @@
                     confirmButtonText: '确定',
                     cancelButtonText: '取消',
                     type: 'warning'
-                }).then(() => {
+                })
+                .then(() => {
                     let tempIndex = rowIndex;
                     let requestUrl = this.apiUrl + '/upgrade/delete/' + this.$route.params.tableId + '?index=' + tempIndex;
                     this.axios.get(requestUrl)
@@ -512,7 +530,8 @@
                                 duration: 4000
                             });
                         });
-                }).catch(() => {
+                })
+                .catch(() => {
                     this.$message({
                         type: 'info',
                         message: '已取消删除'
@@ -530,19 +549,20 @@
                     })
                     .then(
                         (res) => {
-                            if (res.status === 200) {
+                            if (res.status === 200 && res.data !== "") {
                                 // 总页数配置
-                                let numbers = res.data.pop();
+                                let numbers = res.data.summer;
                                 this.totalNum = numbers.totalCount;
                                 this.NumOfNewData = numbers.newCount;
                                 this.NumOfSavedData = numbers.savedCount;
                                 this.NumOfUpdateData = numbers.updateCount;
                                 this.NumOfSameData = numbers.sameCount;
                                 // 保存的数据
-                                this.storeData = res.data;
+                                this.storeData = res.data.detail;
                                 // 取消页面加载转态
                                 this.listLoading = false;
                                 window.location.href = '#top';
+
                             }
                             else {
                                 this.$message.error('网络异常，请重新尝试检索');
@@ -566,14 +586,14 @@
                             if (res.status === 200) {
                                 if (res.data !== "") {        // 返回值不为空，存在更新结果
                                     // 总页数配置
-                                    let numbers = res.data.pop();
+                                    let numbers = res.data.summer;
                                     this.totalNum = numbers.totalCount;
                                     this.NumOfNewData = numbers.newCount;
                                     this.NumOfSavedData = numbers.savedCount;
                                     this.NumOfUpdateData = numbers.updateCount;
                                     this.NumOfSameData = numbers.sameCount;
                                     // 保存的数据
-                                    this.storeData = res.data;
+                                    this.storeData = res.data.detail;
                                     // 取消页面加载转态
                                     this.listLoading = false;
                                     window.location.href = '#top';
@@ -611,28 +631,26 @@
                     }
                     this.searchingData = {  // 构造搜索参数
                         'condition': {},
-                        'status': {
-                            'update': true,
-                            'new': true,
-                            'saved': true,
-                            'same': true
-                        }
+                        'status': 'all'
                     };
+
                     if (this.searchKey !== null && this.searchContent !== '') {
+                        //console.log(this.searchKey+ ' '+ this.searchContent);
                         this.searchingData.condition[this.searchKey] = this.searchContent;   // 传入要检索的字段信息
                     }
+                    else if (this.searchKey == null && this.searchContent !== ''){
+                        this.$message.warning('请选择筛选字段');
+                        return;
+                    }
                     if (this.checkAll !== true) {
-                        if (this.checkedStatuses.indexOf('saved') === -1) {
-                            this.searchingData.status.saved = false;
+                        if (this.checkedStatuses.indexOf('update') !== -1) {
+                            this.searchingData.status = 'update';
                         }
-                        if (this.checkedStatuses.indexOf('update') === -1) {
-                            this.searchingData.status.update = false;
+                        else if (this.checkedStatuses.indexOf('new') !== -1) {
+                            this.searchingData.status = 'new';
                         }
-                        if (this.checkedStatuses.indexOf('new') === -1) {
-                            this.searchingData.status.new = false;
-                        }
-                        if (this.checkedStatuses.indexOf('same') === -1) {
-                            this.searchingData.status.same = false;
+                        if (this.checkedStatuses.indexOf('same') !== -1) {
+                            this.searchingData.status = 'same';
                         }
                     }
                     this.loadingSearchingResults();
@@ -664,8 +682,36 @@
                                 let pageSettingInfo = res.data;
                                 // 页面名字
                                 this.pageName = pageSettingInfo.pageName;
+                                // 详细信息配置
+                                this.detailedSetting = JSON.parse(pageSettingInfo.all);
                                 // 列表展示信息配置
-                                this.listSetting = JSON.parse(pageSettingInfo.show);
+                                //this.listSetting = JSON.parse(pageSettingInfo.show);
+                                if(pageSettingInfo.show !==undefined){
+                                    let showArray = JSON.parse(pageSettingInfo.show);
+                                    if((typeof showArray === 'object')&& showArray.constructor === Array){
+                                        for(let index in showArray){
+                                            if(showArray.hasOwnProperty(index) && showArray[index] in this.detailedSetting){
+                                                this.listSetting[showArray[index]]=this.detailedSetting[showArray[index]].name;
+                                            }
+                                        }
+                                    }else {
+                                        //字典
+                                        for(let key in showArray){
+                                            if(showArray.hasOwnProperty(key) && key in this.detailedSetting){
+                                                this.listSetting[key]=showArray[key];
+                                            }
+                                        }
+                                    }
+                                }else {
+                                    //当配置中不存在show项时全部展示
+                                    for(let key in this.detailedSetting){
+                                        if(this.detailedSetting.hasOwnProperty(key)){
+                                            let value = this.detailedSetting[key];
+                                            this.listSetting[key]=value.name;
+                                        }
+                                    }
+                                }
+                                console.log(this.listSetting);
                                 // 删除修改时间字段
                                 for (let key in this.listSetting) {
                                     if (key === 'MODIFY_TIME') {
@@ -690,7 +736,7 @@
                                         }
                                     });
                                 // id设置
-                                this.idSetting = JSON.parse(pageSettingInfo.index);
+                                //this.idSetting = JSON.parse(pageSettingInfo.index);
                                 this.pageJumping();
                             }
                             else {
@@ -710,7 +756,6 @@
             statusFilter: function (value, row) {
                 return row.status === value
             },
-
         },
         created: function () {
             this.getPageSetting();
