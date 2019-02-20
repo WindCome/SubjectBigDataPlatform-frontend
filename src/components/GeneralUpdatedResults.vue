@@ -45,42 +45,60 @@
             <!--update数据详细信息对话框-->
             <!--TODO-->
             <el-dialog title="更新详情" :visible.sync="dialogOfUpdateData" width="50%">
-                <!--原数据-->
-                <el-table border
-                          highlight-current-row
-                          v-loading="listLoading"
-                          element-loading-text="拼命加载更新结果中..."
-                          :data="[detailedData.oriData]">
-                    <!--展示数据信息列-->
-                    <el-table-column v-for="(value, key) in listSetting" :label="value" :key="key">
-                        <template slot-scope="scope">
-                            <p class="p1">{{typeof (scope.row[key])!=='undefined'?scope.row[key]:""}}</p>
-                        </template>
-                    </el-table-column>
-                </el-table>
-                <!--相似数据-->
-                <el-table border
-                          highlight-current-row
-                          v-loading="listLoading"
-                          element-loading-text="拼命加载更新结果中..."
-                          :data="detailedData.data">
-                    <!--展示数据信息列-->
-                    <el-table-column v-for="(value, key) in listSetting" :label="value" :key="key">
-                        <template slot-scope="scope">
-                            <p class="p1">{{typeof (scope.row[key])!=='undefined'?scope.row[key]:""}}</p>
-                        </template>
-                    </el-table-column>
-
-
-                    <el-table-column label="选中">
-                        <template slot-scope="scope">
-                            <el-radio-button v-bind:true-value="scope.$index" v-model="updateDetailSelectIndex"> {{scope.$index}}</el-radio-button>
-                        </template>
-                    </el-table-column>
-                </el-table>
+                <template>
+                    <el-tabs type="card" v-model="activeName">
+                        <el-tab-pane label="编辑" name="first">
+                            <!--保证this.detailedData不是一个空对象，否则在初始化绑定时会报错-->
+                            <el-form label-width="5rem" :model="detailedData" v-if='JSON.stringify(this.detailedData)!=="{}" '>
+                                <el-form-item v-for="(value, key) in detailedSetting" :label='value.name+": " ' :key="key">
+                                    <el-input v-if='value.modify==="true" ' auto-complete="off" type="textarea" autosize v-model="detailedData.oriData[key]"></el-input>
+                                    <span v-else class="span1">{{detailedData.oriData[key]}}</span>
+                                </el-form-item>
+                            </el-form>
+                        </el-tab-pane>
+                        <el-tab-pane label="相似数据" name="second">
+                            <!--原数据-->
+                            <h1 align="center">爬虫数据</h1>
+                            <el-table title="爬虫数据" border
+                                      highlight-current-row
+                                      v-loading="listLoading"
+                                      element-loading-text="拼命加载更新结果中..."
+                                      :data="[detailedData.oriData]">
+                                <!--展示数据信息列-->
+                                <el-table-column v-for="(value, key) in listSetting" :label="value" :key="key">
+                                    <template slot-scope="scope">
+                                        <p class="p1">{{typeof (scope.row[key])!=='undefined'?scope.row[key]:""}}</p>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                            <!--相似数据-->
+                            <h1 align="center">Mysql数据</h1>
+                            <el-table title="Mysql数据" ref="multipleTable" border
+                                      highlight-current-row
+                                      v-loading="listLoading"
+                                      element-loading-text="拼命加载更新结果中..."
+                                      :data="detailedData.data"
+                                      @current-change="handleSelectionChange">
+                                <el-table-column
+                                    label="操作"
+                                    width="55">
+                                    <template slot-scope="scope">
+                                        <el-checkbox v-model="scope.row.checked"></el-checkbox>
+                                    </template>
+                                </el-table-column>
+                                <!--展示数据信息列-->
+                                <el-table-column v-for="(value, key) in listSetting" :label="value" :key="key">
+                                    <template slot-scope="scope">
+                                        <p class="p1">{{typeof (scope.row[key])!=='undefined'?scope.row[key]:""}}</p>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                        </el-tab-pane>
+                    </el-tabs>
+                </template>
                 <div slot="footer" class="dialog-footer">
                     <el-button @click="dialogOfUpdateData = false">取 消</el-button>
-                    <el-button type="primary">保 存</el-button>
+                    <el-button type="primary" @click="submitModification">保 存</el-button>
                 </div>
             </el-dialog>
             <!--提示无更新结果-->
@@ -277,7 +295,8 @@
                 savingPercentage: 0, // 更新进度
                 ws: null,    // 保存所有结果的WebSocket
                 //更新详情
-                updateDetailSelectIndex: 1,//选中序号
+                currentSelectFroUpdate : undefined, //选中的对象
+                activeName : "first"  //激活选项卡
             }
         },
         components: {
@@ -295,33 +314,56 @@
                 // 既没有全不选也没有全选，处于不确定状态
                 this.isIndeterminate = checkedCount > 0 && checkedCount < this.statuses.length;
             },
+            handleSelectionChange (row) {
+                this.currentSelectFroUpdate = row;
+                this.detailedData.data.forEach(item => {
+                    // 排他,每次选择时把其他选项都清除
+                    if (item !== row) {
+                        item.checked = false
+                    }
+                });
+            },
             // 弹出展示新增数据详细信息对话框
             showDialogOfNewData: function (rowData, rowIndex) {
-                this.detailedData = this.storeData[rowIndex];
+                this.detailedData = JSON.parse(JSON.stringify(this.storeData[rowIndex]));
                 this.modifyingRowIndex = rowIndex;
                 this.dialogOfNewData = true;
             },
             // 弹出saved数据详细信息对话框
             showDialogOfSavedData: function (rowData) {
-                this.detailedData = this.storeData[rowIndex];
+                this.detailedData = JSON.parse(JSON.stringify(this.storeData[rowIndex]));
                 this.dialogOfSavedData = true;
             },
             // 弹出update数据详细信息对话框
             showDialogOfUpdateData: function (rowData, rowIndex) {
-                this.detailedData = this.storeData[rowIndex];
+                this.detailedData = JSON.parse(JSON.stringify(this.storeData[rowIndex]));
+                if(this.detailedData.data !== undefined && this.detailedData.data.length>0){
+                    this.detailedData.data[0].checked = true;
+                }
                 this.modifyingRowIndex = rowIndex;
                 this.dialogOfUpdateData = true;
             },
             // 提交修改后的更新信息
             submitModification: function () {
+                let targetId = undefined;
+                if(this.detailedData.data !== undefined && this.detailedData.data.length !== 0){
+                    let targetIndex = this.detailedData.data.indexOf(this.currentSelectFroUpdate)
+                    if(targetIndex >= 0){
+                        let idName = this.idSetting.name;
+                        targetId = this.detailedData.data[targetIndex][idName];
+                    }
+                }
                 this.submitModificationLoading = true;
                 // 保存修改的数据的序号
                 let tempIndex = this.modifyingRowIndex;
                 let tempData = {};
-                for (let key in this.detailedData) {
+                for (let key in this.detailedData.oriData) {
                     tempData[key] = this.detailedData.oriData[key];
                 }
                 let modifyInfo={"op":"UPDATE","index":tempIndex,"value":tempData};
+                if(targetId !==undefined){
+                    modifyInfo["id"] = targetId;
+                }
                 this.axios.post(this.apiUrl + '/redis/modify/' + this.$route.params.tableId , [JSON.stringify(modifyInfo)],
                     {headers: {'Content-Type': 'application/json'}})
                     .then(
@@ -341,6 +383,8 @@
                                         });
                                     //TODO Converting circular structure to JSON
                                     // this.$set(this.storeData[index], 'data', this.detailedData);
+                                    // this.storeData[index] = this.detailedData;
+                                    this.$set(this.storeData, index, this.detailedData);
                                     this.submitModificationLoading = false;
                                     // 两种对话框都保存
                                     this.dialogOfNewData = false;
@@ -711,7 +755,8 @@
                                         }
                                     }
                                 }
-                                console.log(this.listSetting);
+                                //id信息
+                                this.idSetting = JSON.parse(pageSettingInfo.index);
                                 // 删除修改时间字段
                                 for (let key in this.listSetting) {
                                     if (key === 'MODIFY_TIME') {
