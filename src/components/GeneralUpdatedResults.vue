@@ -8,8 +8,8 @@
                         <span>{{pageName}}更新结果</span>
                     </el-col>
                     <el-col :span="12" style="text-align: right" v-if="isSavingAllData===false">
-                        <el-button type="primary" round @click="saveAllData" :disabled="this.totalNum===this.NumOfSavedData+this.NumOfSameData">
-                            <span v-if="this.totalNum!==this.NumOfSavedData+this.NumOfSameData">保存更新结果</span>
+                        <el-button type="primary" round @click="saveAllData" :disabled="this.totalNum===this.NumOfDeletedData+this.NumOfSameData">
+                            <span v-if="this.totalNum!==this.NumOfDeletedData+this.NumOfSameData">保存更新结果</span>
                             <span class="span1" v-else>已保存所有更新结果</span>
                         </el-button>
                     </el-col>
@@ -119,7 +119,7 @@
                     <el-col :span="7">
                         <span>共有{{totalNum}}条数据</span>
                         <br>
-                        <span v-if="NumOfSavedData!==0">已保存{{NumOfSavedData}}条</span>
+                        <span v-if="NumOfDeletedData!==0">已移除{{NumOfDeletedData}}条</span>
                         <span v-if="NumOfNewData!==0">新增{{NumOfNewData}}条</span>
                         <span v-if="NumOfUpdateData!==0">{{NumOfUpdateData}}条数据更新状态</span>
                         <span v-if="NumOfSameData!==0">无更新{{NumOfSameData}}条</span>
@@ -165,11 +165,11 @@
                     <el-table-column label="状态"
                                      prop="status"
                                      width="100"
-                                     :filters="[{text:'被移除',value:'deleted'},{text:'新增',value:'new'},
+                                     :filters="[{text:'被移除',value:'delete'},{text:'新增',value:'new'},
                                      {text:'数据更新',value:'update'},{text:'已保存',value:'saved'},{text:'无更新',value:'same'}]"
                                      :filter-method="statusFilter">
                         <template slot-scope="scope">
-                            <el-tag v-if='scope.row.status==="deleted"' type='danger'>
+                            <el-tag v-if='scope.row.status==="delete"' type='danger'>
                                 被移除
                             </el-tag>
                             <el-tag v-else-if='scope.row.status==="new"' type="success">
@@ -190,15 +190,8 @@
                     <el-table-column label="操作">
                         <template slot-scope="scope">
                             <!--被删除的数据-->
-                            <el-button-group v-if='scope.row.status==="deleted"'>
-                                <el-button>查看</el-button>
-                                <el-button>保留</el-button>
-                                <el-button
-                                    type="danger"
-                                    icon="el-icon-delete"
-                                    size="small"
-                                    @click.native=""
-                                ></el-button>
+                            <el-button-group v-if='scope.row.status==="delete"'>
+                                <el-button @click="resetData(scope.row.index)" size="small">保留</el-button>
                             </el-button-group>
                             <!--数据更新状态-->
                             <el-button-group v-else-if='scope.row.status==="update"'>
@@ -245,6 +238,7 @@
 
 <script>
     import AsideMenu from '@/components/AsideMenu'
+    import index from "../router";
 
     export default {
         name: "GeneralUpdatedResults",
@@ -265,7 +259,7 @@
                 totalNum: 0,   // 总条数
                 NumOfNewData: 0,     // 新增数据条数
                 NumOfUpdateData: 0,  // 数据更新状态数据条数
-                NumOfSavedData: 0, // 已保存的数据条数
+                NumOfDeletedData: 0, // 已移除的数据条数
                 NumOfSameData: 0,    // 相同的数据条数
                 // 加载状态控制
                 listLoading: false,     // 列表加载状态
@@ -281,11 +275,11 @@
                 searchKey: null,  // 检索的key
                 searchContent: '',   // 检索的内容
                 checkAll: true,    // 是否全选
-                checkedStatuses: ['update', 'saved', 'new', 'same'],  // 所有选择的状态
+                checkedStatuses: ['update', 'delete', 'new', 'same'],  // 所有选择的状态
                 statuses: [
                     {'status': 'update', 'label': '数据更新'},
                     {'status': 'new', 'label': '新增'},
-                    {'status': 'saved', 'label': '已保存'},
+                    {'status': 'delete', 'label': '已移除'},
                     {'status': 'same', 'label': '无更新'},
                 ],
                 isIndeterminate: false, // 全选的不确定状态
@@ -305,7 +299,7 @@
         computed: {},
         methods: {
             handleCheckAllChange(val) {
-                this.checkedStatuses = val ? ['update', 'saved', 'new', 'same'] : [];
+                this.checkedStatuses = val ? ['update', 'delete', 'new', 'same'] : [];
                 this.isIndeterminate = false;
             },
             handleCheckedSingleChange(value) {
@@ -325,7 +319,14 @@
             },
             // 弹出展示新增数据详细信息对话框
             showDialogOfNewData: function (rowData, rowIndex) {
-                this.detailedData = JSON.parse(JSON.stringify(this.storeData[rowIndex]));
+                let index = -1;
+                for(let i = 0 ;i<this.storeData.length ;i++){
+                    if(this.storeData[i].index === rowIndex){
+                        index = i;
+                        break;
+                    }
+                }
+                this.detailedData = JSON.parse(JSON.stringify(this.storeData[index]));
                 this.modifyingRowIndex = rowIndex;
                 this.dialogOfNewData = true;
             },
@@ -336,7 +337,14 @@
             },
             // 弹出update数据详细信息对话框
             showDialogOfUpdateData: function (rowData, rowIndex) {
-                this.detailedData = JSON.parse(JSON.stringify(this.storeData[rowIndex]));
+                let index = -1;
+                for(let i = 0 ;i<this.storeData.length ;i++){
+                    if(this.storeData[i].index === rowIndex){
+                        index = i;
+                        break;
+                    }
+                }
+                this.detailedData = JSON.parse(JSON.stringify(this.storeData[index]));
                 if(this.detailedData.data !== undefined && this.detailedData.data.length>0){
                     this.detailedData.data[0].checked = true;
                 }
@@ -347,7 +355,7 @@
             submitModification: function () {
                 let targetId = undefined;
                 if(this.detailedData.data !== undefined && this.detailedData.data.length !== 0){
-                    let targetIndex = this.detailedData.data.indexOf(this.currentSelectFroUpdate)
+                    let targetIndex = this.detailedData.data.indexOf(this.currentSelectFroUpdate);
                     if(targetIndex >= 0){
                         let idName = this.idSetting.name;
                         targetId = this.detailedData.data[targetIndex][idName];
@@ -360,48 +368,42 @@
                 for (let key in this.detailedData.oriData) {
                     tempData[key] = this.detailedData.oriData[key];
                 }
-                let modifyInfo={"op":"UPDATE","index":tempIndex,"value":tempData};
+                let modifyInfo={"value":tempData};
                 if(targetId !==undefined){
                     modifyInfo["id"] = targetId;
                 }
-                this.axios.post(this.apiUrl + '/redis/modify/' + this.$route.params.tableId , [JSON.stringify(modifyInfo)],
+                this.axios.post(this.apiUrl + '/spider/update/' + this.$route.params.tableId + '?index='+tempIndex ,JSON.stringify(modifyInfo),
                     {headers: {'Content-Type': 'application/json'}})
                     .then(
                         (res) => {
-                            if (res.status === 200) {
-                                if (res.data.indexOf(tempIndex) > -1) {
-                                    this.$notify({
-                                        title: '成功',
-                                        message: '修改信息成功',
-                                        type: 'success',
-                                        duration: 4000
+                            if (res.data.key === "success") {
+                                this.$notify({
+                                    title: '成功',
+                                    message: '修改信息成功',
+                                    type: 'success',
+                                    duration: 4000
+                                });
+                                // 修改前端数据
+                                let index = this.storeData.findIndex(
+                                    (x) => {
+                                        return x['index'] === tempIndex;
                                     });
-                                    // 修改前端数据
-                                    let index = this.storeData.findIndex(
-                                        (x) => {
-                                            return x['index'] === tempIndex;
-                                        });
-                                    //TODO Converting circular structure to JSON
-                                    // this.$set(this.storeData[index], 'data', this.detailedData);
-                                    // this.storeData[index] = this.detailedData;
-                                    this.$set(this.storeData, index, this.detailedData);
-                                    this.submitModificationLoading = false;
-                                    // 两种对话框都保存
-                                    this.dialogOfNewData = false;
-                                    this.dialogOfUpdateData = false;
-                                }
-                                else {      // 修改更新信息失败
-                                    this.$notify({
-                                        title: '失败',
-                                        message: '修改信息失败',
-                                        type: 'error',
-                                        duration: 4000
-                                    });
-                                    this.submitModificationLoading = false;
-                                }
+                                //TODO Converting circular structure to JSON
+                                // this.$set(this.storeData[index], 'data', this.detailedData);
+                                // this.storeData[index] = this.detailedData;
+                                this.$set(this.storeData, index, this.detailedData);
+                                this.submitModificationLoading = false;
+                                // 两种对话框都保存
+                                this.dialogOfNewData = false;
+                                this.dialogOfUpdateData = false;
                             }
-                            else {
-                                this.$message.error('网络异常，请重新尝试');
+                            else {      // 修改更新信息失败
+                                this.$notify({
+                                    title: '失败',
+                                    message: '修改信息失败',
+                                    type: 'error',
+                                    duration: 4000
+                                });
                                 this.submitModificationLoading = false;
                             }
                         }
@@ -411,6 +413,67 @@
                         this.$message.error('其它异常，请重新尝试');
                         this.submitModificationLoading = false;
                     });
+            },
+            //恢复删除的爬虫数据
+            resetData: function (rowIndex) {
+                this.$confirm('确认恢复该条信息吗？, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'info'
+                }).then(() => {
+                    let tempIndex = rowIndex;
+                    this.axios.get(this.apiUrl + '/spider/reset/' + this.$route.params.tableId +'?index='+tempIndex)
+                        .then(
+                            (res) => {
+                                if (res.data.key === "success") {
+                                    this.$message({
+                                        type: 'success',
+                                        message: '恢复成功!'
+                                    });
+                                    // 修改前端数据
+                                    let index = this.storeData.findIndex(
+                                        (x) => {
+                                            return x['index'] === tempIndex;
+                                        });
+                                    // 设置数据条数
+                                    let object = JSON.parse(res.data.value);
+                                    object.index = tempIndex;
+                                    this.totalNum++;
+                                    if(object.status ==='update'){
+                                        this.NumOfUpdateData++;
+                                    }else if(object.status ==='same'){
+                                        this.NumOfSameData++;
+                                    }else if(object.status ==='new'){
+                                        this.NumOfNewData++;
+                                    }
+                                    this.$set(this.storeData, index, object);
+
+                                }
+                                else {
+                                    this.$notify({
+                                        title: '失败',
+                                        message: '保存失败，请重新尝试,具体信息为：'+res.data.info,
+                                        type: 'warning',
+                                        duration: 4000
+                                    });
+                                }
+                            }
+                        ).catch(
+                        (error) => {
+                            console.log(error);
+                            this.$notify({
+                                title: '失败',
+                                message: '网络异常',
+                                type: 'warning',
+                                duration: 4000
+                            });
+                        });
+                }).catch(() => {
+                    this.$message({
+                        type: 'info',
+                        message: '已取消操作'
+                    });
+                });
             },
             // 保存单条更新信息
             saveSingleData: function (rowIndex) {
@@ -440,10 +503,6 @@
                                         this.NumOfUpdateData -= 1;
                                     else if (this.storeData[index].status === 'new')
                                         this.NumOfNewData -= 1;
-                                    // 更改为保存状态
-                                    this.$set(this.storeData[index], 'status', 'saved');
-                                    // 保存数据条数+1
-                                    this.NumOfSavedData += 1;
                                 }
                                 else {
                                     this.$notify({
@@ -538,11 +597,10 @@
                 })
                 .then(() => {
                     let tempIndex = rowIndex;
-                    let requestUrl = this.apiUrl + '/upgrade/delete/' + this.$route.params.tableId + '?index=' + tempIndex;
-                    this.axios.get(requestUrl)
+                    this.axios.delete(this.apiUrl + '/spider/delete/' + this.$route.params.tableId +'?index='+tempIndex)
                         .then(
                             (res) => {
-                                if (res.data === true) {
+                                if (res.data.key === "success") {
                                     this.$message({
                                         type: 'success',
                                         message: '删除成功!'
@@ -558,7 +616,8 @@
                                         this.NumOfUpdateData -= 1;
                                     else if (this.storeData[index].status === 'new')
                                         this.NumOfNewData -= 1;
-                                    this.storeData.splice(index, 1);
+                                    this.storeData[index].status = 'delete';
+                                    this.$set(this.storeData, index , this.storeData[index]);
                                 }
                                 else {
                                     this.$message.error('网络异常，请重新加载');
@@ -598,7 +657,7 @@
                                 let numbers = res.data.summer;
                                 this.totalNum = numbers.totalCount;
                                 this.NumOfNewData = numbers.newCount;
-                                this.NumOfSavedData = numbers.savedCount;
+                                this.NumOfDeletedData = numbers.deleteCount;
                                 this.NumOfUpdateData = numbers.updateCount;
                                 this.NumOfSameData = numbers.sameCount;
                                 // 保存的数据
@@ -633,7 +692,7 @@
                                     let numbers = res.data.summer;
                                     this.totalNum = numbers.totalCount;
                                     this.NumOfNewData = numbers.newCount;
-                                    this.NumOfSavedData = numbers.savedCount;
+                                    this.NumOfDeletedData = numbers.deleteCount;
                                     this.NumOfUpdateData = numbers.updateCount;
                                     this.NumOfSameData = numbers.sameCount;
                                     // 保存的数据
@@ -693,8 +752,11 @@
                         else if (this.checkedStatuses.indexOf('new') !== -1) {
                             this.searchingData.status = 'new';
                         }
-                        if (this.checkedStatuses.indexOf('same') !== -1) {
+                        else if (this.checkedStatuses.indexOf('same') !== -1) {
                             this.searchingData.status = 'same';
+                        }
+                        else if(this.checkedStatuses.indexOf('delete') !== -1) {
+                            this.searchingData.status = 'delete';
                         }
                     }
                     this.loadingSearchingResults();

@@ -8,8 +8,12 @@
                         <span>{{pageName}}信息列表</span>
                     </el-col>
                     <el-col :span="12" style="text-align: right">
+                        <!--日志-->
+                        <i class="iconfont iconrizhi" style="margin-right: 1rem;" @click="getSpiderLog">
+                        </i>
                         <!--更新源配置-->
-                        <i class="el-icon-setting" style="margin-right: 1rem;" @click="dialogOfConfig=true"></i>
+                        <i class="el-icon-setting" style="margin-right: 1rem;" @click="dialogOfConfig=true">
+                        </i>
                         <!--获取更新数据-->
                         <el-button type="primary" round @click="showUpdatingDialog" :loading="updateLoading">更新</el-button>
                         <!--查看更新结果-->
@@ -20,6 +24,21 @@
                     </el-col>
                 </el-row>
             </el-header>
+            <!--日志信息-->
+            <el-dialog title="爬虫日志" :visible.sync="dialogOfLog">
+                <el-form>
+                    <el-form-item label='日志生成时间:' label-width="120px">
+                        <span>{{logInfo.generateAtTime}}</span>
+                    </el-form-item>
+                    <el-form-item label='爬取耗时:' label-width="120px">
+                        <span>{{logInfo.spendTime}}ms</span>
+                    </el-form-item>
+                    <el-form-item label='详情:' label-width="120px">
+                        <el-input type="textarea" :autosize="{minRows:3,maxRows:15}" v-model="logInfo.detail" readonly=""></el-input>
+                        </el-form-item>
+                    <!---->
+                </el-form>
+            </el-dialog>
             <!--配置信息对话框-->
             <el-dialog title="配置信息" :visible.sync="dialogOfConfig">
                 <el-form :model="updatingConfig">
@@ -160,6 +179,7 @@
                 // 院士详细信息
                 detailedData: {},
                 // 对话框显示控制
+                dialogOfLog: false,         //控制显示爬虫日志信息的对话框
                 dialogOfInfo: false,     // 控制显示详细信息的对话框
                 dialogOfConfig: false,      // 控制显示更新配置的对话框
                 dialogOfAddingNewAca: false,    // 控制新增院士对话框
@@ -183,6 +203,7 @@
                 idSetting: {},   // 列表信息id的设置，包括id的key和类型（int与str）
                 pageName: null,   // 页面名称
                 updatingConfig: {},  // 更新配置
+                logInfo: {},        //日志信息
                 // 检索设置
                 searchKey: null,  // 检索的key
                 searchContent: '',   // 检索的内容
@@ -265,6 +286,41 @@
                         message: '已取消删除'
                     });
                 });
+            },
+            // 查询爬虫日志
+            getSpiderLog: function () {
+                let requestUrl = this.apiUrl + '/spider/log/' + this.$route.params.tableId;
+                this.axios.get(requestUrl)
+                    .then(
+                        (res) => {
+                            if (res.data !== "") {
+                                this.dialogOfLog = true;
+                                this.logInfo = res.data;
+                                let detailArray = this.logInfo.detailInfo;
+                                this.logInfo.detail = "";
+                                for(let i =0;i<detailArray.length ;i++){
+                                    this.logInfo.detail += detailArray[i];
+                                }
+                            }
+                            else {
+                                this.$notify({
+                                    title: '失败',
+                                    message: '获取日志信息失败',
+                                    type: 'error',
+                                    duration: 4000
+                                });
+                            }
+                        }
+                    ).catch(
+                    (error) => {
+                        console.log(error);
+                        this.$notify({
+                            title: '失败',
+                            message: '获取日志信息失败',
+                            type: 'error',
+                            duration: 4000
+                        });
+                    });
             },
             // 保存更新配置
             saveConfig: function () {
@@ -674,7 +730,6 @@
                                     });
                                 // id设置
                                 if(pageSettingInfo.index !==undefined){
-                                    console.log(pageSettingInfo.index);
                                     this.idSetting = JSON.parse(pageSettingInfo.index);
                                 }
                                 // 更新设置
@@ -704,6 +759,8 @@
 </script>
 
 <style scoped>
+    @import "../../iconfont/iconfont.css";
+
     .el-header {
         background-color: #B3C0D1;
         color: #333;
