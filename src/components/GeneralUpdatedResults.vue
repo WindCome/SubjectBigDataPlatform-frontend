@@ -43,7 +43,6 @@
                 </div>
             </el-dialog>
             <!--update数据详细信息对话框-->
-            <!--TODO-->
             <el-dialog title="更新详情" :visible.sync="dialogOfUpdateData" width="50%">
                 <template>
                     <el-tabs type="card" v-model="activeName">

@@ -14,6 +14,8 @@
                         <!--更新源配置-->
                         <i class="el-icon-setting" style="margin-right: 1rem;" @click="dialogOfConfig=true">
                         </i>
+                        <!--导入导出-->
+                        <el-button type="primary" round @click="showExportOrImportDialog">导入\导出</el-button>
                         <!--获取更新数据-->
                         <el-button type="primary" round @click="showUpdatingDialog" :loading="updateLoading">更新</el-button>
                         <!--查看更新结果-->
@@ -49,6 +51,25 @@
                 <div slot="footer" class="dialog-footer">
                     <el-button @click="dialogOfConfig = false">取 消</el-button>
                     <el-button v-loading="saveUpdatingConfigLoading" type="primary" @click="saveConfig">保存配置</el-button>
+                </div>
+            </el-dialog>
+            <!--导入导出选项对话框-->
+            <el-dialog title="导入\导出" :visible.sync="dialogOfExportOrImportData" width="50%">
+                <template>
+                    <el-tabs type="card" v-model="activeName">
+                        <el-tab-pane label="导入" name="export">
+                            <el-checkbox-group v-model="exportChecked">
+                                <p><el-checkbox v-for="option in exportOptions" :label="option.type" :key="option.type" @click="handleExportSelectionChange">{{option.type}}</el-checkbox></p>
+                            </el-checkbox-group>
+                        </el-tab-pane>
+                        <el-tab-pane label="导出" name="import">
+
+                        </el-tab-pane>
+                    </el-tabs>
+                </template>
+                <div slot="footer" class="dialog-footer">
+                    <el-button @click="dialogOfExportOrImportData = false">取 消</el-button>
+                    <el-button type="primary" @click="exportOrImportOperation">确定</el-button>
                 </div>
             </el-dialog>
             <!--获取最新数据对话框-->
@@ -184,6 +205,7 @@
                 dialogOfConfig: false,      // 控制显示更新配置的对话框
                 dialogOfAddingNewAca: false,    // 控制新增院士对话框
                 dialogOfGetLatestData: false,     // 更新数据库对话框
+                dialogOfExportOrImportData :false, // 导入导出对话框
                 // 加载状态控制
                 listLoading: false,     // 列表加载状态
                 addLoading: false,       // 添加新信息按钮加载状态
@@ -209,7 +231,14 @@
                 searchContent: '',   // 检索的内容
                 searchingData: {},    // 搜索传递的内容
                 //定时器
-                updateTimer:{}
+                updateTimer:{},
+                //导入导出选项卡
+                activeName : "export",
+                exportChecked: ['excel','mysql'],
+                exportOptions: [
+                    {'type': 'excel', 'label': '导出到excel'},
+                    {'type': 'mysql', 'label': '导出到mysql'}
+                ],
             }
         },
         components: {
@@ -236,6 +265,49 @@
                 this.dialogOfInfo = true;
                 // 拷贝
                 this.detailedData = Object.assign({}, rowData)
+            },
+            //弹出导入导出对话框
+            showExportOrImportDialog: function () {
+                this.dialogOfExportOrImportData = true;
+            },
+            //导出选项
+            handleExportSelectionChange:function (value) {
+                console.log(value)
+                // this.currentSelectFroUpdate = row;
+                // this.detailedData.data.forEach(item => {
+                //     // 排他,每次选择时把其他选项都清除
+                //     if (item !== row) {
+                //         item.checked = false
+                //     }
+                // });
+            },
+            //确认导入导出操作
+            exportOrImportOperation:function(){
+                console.log(this.activeName + ' ' + this.exportChecked);
+                if(this.activeName === 'export' && this.exportChecked.indexOf('excel') !== -1){
+                    this.exportToExcel();
+                }
+            },
+            //导出到excel
+            exportToExcel:function(){
+                let requestUrl = this.apiUrl + '/export/' + this.$route.params.tableId +'?target=excel';
+                this.axios.post(requestUrl)
+                    .then(
+                        (res) => {
+                            res.data.taskName = '表'+this.$route.params.tableId+'导出到excel';
+                            this.$emit('watchChild',res.data);
+                            this.dialogOfExportOrImportData = false;
+                        }
+                    ).catch(
+                    (error) => {
+                        console.log(error);
+                        this.$notify({
+                            title: '失败',
+                            message: '网络异常',
+                            type: 'warning',
+                            duration: 4000
+                        });
+                    });
             },
             // 弹出更新对话框
             showUpdatingDialog: function () {
