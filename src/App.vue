@@ -20,58 +20,16 @@
                 <router-view @watchChild="handelJobInfoFromChild" @showTaskList="showDialogOfTaskList"/>
             </el-main>
         <el-dialog title="任务列表" :visible.sync="dialogOfTaskList" width="50%">
-            <template>
-                <el-tabs type="card" v-model="activeName" :before-leave='handleClick'>
-                    <el-tab-pane label="全部" name="all">
-                        <el-table border
-                                  highlight-current-row
-                                  :data="taskToShow">
-                            <!--任务名称列-->
-                            <el-table-column label="任务名称">
-                                <template slot-scope="scope">
-                                    <p class="p1">{{scope.row.name}}</p>
-                                </template>
-                            </el-table-column>
-                            <!--进度列-->
-                            <el-table-column label="进度">
-                                <template slot-scope="scope">
-                                    <el-progress :text-inside="true" :stroke-width="18" :percentage="scope.row.progress" status="success"></el-progress>
-                                </template>
-                            </el-table-column>
-                            <!--状态列-->
-                            <el-table-column label="状态">
-                                <template slot-scope="scope">
-                                    <p class="p1">{{scope.row.status}}</p>
-                                </template>
-                            </el-table-column>
-                            <!--操作列-->
-                            <el-table-column label="操作">
-                                <template slot-scope="scope">
-                                    <el-button-group v-if='scope !== undefined && scope.row.status==="ongoing"'>
-                                        <el-button @click="deleteTask" size="small">取消任务</el-button>
-                                    </el-button-group>
-                                    <el-button-group v-if='scope !== undefined && scope.row.status==="done"'>
-                                        <el-button @click="downloadResource(scope.row)" size="small">下载文件</el-button>
-                                    </el-button-group>
-                                </template>
-                            </el-table-column>
-                        </el-table>
-                    </el-tab-pane>
-                    <el-tab-pane label="正在进行" name="ongoing">
-
-                    </el-tab-pane>
-                    <el-tab-pane label="已完成" name="done">
-
-                    </el-tab-pane>
-                </el-tabs>
-            </template>
+            <TaskList @deleteTask="deleteTask" v-bind:taskList="taskList"></TaskList>
         </el-dialog>
     </div>
 </template>
 
 <script>
+    import TaskList from "./components/TaskList";
     export default {
         name: 'App',
+        components: {TaskList},
         data:function () {
             return {
                 dialogOfTaskList : false,//显示任务列表
@@ -86,27 +44,23 @@
                 this.taskToShow = this.taskList;
                 this.dialogOfTaskList = true;
             },
-            deleteTask:function () {
-
+            addTask:function(task){
+                this.taskList.splice(0,0,task);
             },
-            downloadResource:function (data) {
-                console.log(data);
-                let requestUrl = this.apiUrl + '/download?fileName=' + data.result;
-                window.location.href = requestUrl;
-            },
-            //更新任务进度
-            updateTaskProgress:function(jobId,progress,result,log){
-                let task = null;
-                let index ;
+            findTaskIndexByJobId:function(jobId){
+                let index = null;
                 for(let i= 0;i<this.taskList.length ;i++){
                     let x = this.taskList[i];
                     if(x.jobId !== undefined && x.jobId === jobId){
-                        task = x;
                         index = i;
                         break;
                     }
                 }
-                //console.log(index);
+                return index;
+            },
+            //更新任务进度
+            updateTaskProgress:function(jobId,progress,result,log){
+                let index = this.findTaskIndexByJobId(jobId);
                 if(result !== undefined){
                     this.$set(this.taskList[index], "result", result);
                 }
@@ -115,10 +69,22 @@
                         this.$set(this.taskList[index], "progress", progress);
                     }else if(progress === 101){
                         this.$set(this.taskList[index], "progress", 100);
-                        this.$set(this.taskList[index], "status","done");
+                        this.$set(this.taskList[index], "status","完成");
                     }
+                    sessionStorage.setItem("taskList",JSON.stringify(this.taskList));
                 }
-
+            },
+            deleteTask:function (jobId) {
+                let index= this.findTaskIndexByJobId(jobId);
+                if(index != null){
+                    let task = this.taskList[index];
+                    if(task.status === '正在进行'){
+                        let params = {"op":"cancelJob","jobId":jobId};
+                        this.webSocketSendMsg(JSON.stringify(params));
+                    }
+                    this.taskList.splice(index ,1);
+                    sessionStorage.setItem("taskList",JSON.stringify(this.taskList));
+                }
             },
             webSocketSendMsg:function(msg){
                 let wsUrl = this.apiUrl.replace('http', 'ws') + '/websocket';
@@ -147,10 +113,9 @@
             },
             handelJobInfoFromChild:function (message) {
                 let params = {"op":"startJob","jobId":message.value};
-                let task = {name:message.taskName,jobId:message.value,status:'ongoing'};
-                this.$set(this.taskList,this.taskList.length,task);
+                let task = {name:message.taskName,jobId:message.value,status:'正在进行'};
+                this.addTask(task);
                 this.webSocketSendMsg(JSON.stringify(params));
-                this.dialogOfTaskList = true;
             },
             //选项卡切换
             handleClick:function(activeName, oldActiveName){
@@ -158,8 +123,16 @@
             }
         },
         created:function () {
-            //this.WebSocketSendMsg();
-        }
+            let tasks = sessionStorage.getItem("taskList");
+            if(tasks != null){
+                let taskList = JSON.parse(tasks);
+                for(let index in taskList){
+                    this.taskList.push(taskList[index]);
+                }
+            }
+        },
+        destroyed:function () {
+        },
     }
 </script>
 

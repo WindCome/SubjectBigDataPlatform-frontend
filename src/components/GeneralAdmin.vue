@@ -57,13 +57,85 @@
             <el-dialog title="导入\导出" :visible.sync="dialogOfExportOrImportData" width="50%">
                 <template>
                     <el-tabs type="card" v-model="activeName">
-                        <el-tab-pane label="导入" name="export">
+                        <el-tab-pane label="导出" name="export">
                             <el-checkbox-group v-model="exportChecked">
                                 <p><el-checkbox v-for="option in exportOptions" :label="option.type" :key="option.type" @click="handleExportSelectionChange">{{option.type}}</el-checkbox></p>
                             </el-checkbox-group>
                         </el-tab-pane>
-                        <el-tab-pane label="导出" name="import">
-
+                        <el-tab-pane label="导入" name="import">
+                            <el-tabs tab-position="left" v-model="importActiveName">
+                                <el-tab-pane label="Excel" name="Excel">
+                                    <input type="file" @change="selectFile" ref="inputer">
+                                </el-tab-pane>
+                                <el-tab-pane label="Mysql" name="Mysql">
+                                    <!--TODO-->
+                                    <el-form label-width="5rem" style="height: auto">
+                                        <div align="center" style="font-size: large">连接信息</div>
+                                        <table>
+                                            <tr>
+                                                <td>
+                                                    <el-form-item label="host" style="margin-bottom: 3px">
+                                                        <el-input auto-complete="on" type="textarea" autosize v-model="mysqlConfig.host" @input="fromFields=[]"></el-input>
+                                                    </el-form-item>
+                                                </td>
+                                                <td>
+                                                    <el-form-item label="port" style="margin-bottom: 3px">
+                                                        <el-input auto-complete="on" type="textarea" autosize v-model="mysqlConfig.port" @input="fromFields=[]"></el-input>
+                                                    </el-form-item>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <el-form-item label="schema" style="margin-bottom: 3px">
+                                                        <el-input auto-complete="off" type="textarea" autosize v-model="mysqlConfig.schema" @input="fromFields=[]"></el-input>
+                                                    </el-form-item>
+                                                </td>
+                                                <td>
+                                                    <el-form-item label="table" style="margin-bottom: 3px">
+                                                        <el-input auto-complete="off" type="textarea" autosize v-model="mysqlConfig.tableName" @input="fromFields=[]"></el-input>
+                                                    </el-form-item>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <el-form-item label="user" style="margin-bottom: 3px">
+                                                        <el-input auto-complete="on" type="textarea" autosize v-model="mysqlConfig.user"  @input="fromFields=[]"></el-input>
+                                                    </el-form-item>
+                                                </td>
+                                                <td>
+                                                    <el-form-item label="password" style="margin-bottom: 3px">
+                                                        <el-input auto-complete="off" type="password" autosize v-model="mysqlConfig.password" @input="fromFields=[]" ></el-input>
+                                                    </el-form-item>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <div>
+                                            <div align="center" style="font-size: large">字段信息</div>
+                                        </div>
+                                        <div>
+                                            <el-table :data="mysqlConfig.mapConfig">
+                                                <el-table-column v-for="(value, key) in {fromField:'源字段',toField:'目的字段'}" :label="value" :key="key">
+                                                    <template slot-scope="scope">
+                                                        <p class="p1">
+                                                            <span>{{scope.row[key]}}</span>
+                                                        </p>
+                                                    </template>
+                                                </el-table-column>
+                                            </el-table>
+                                            <div align="center" style="margin-top: 10px">
+                                                <el-select placeholder="请选择源字段" v-model="fromFieldName" @click.native="getFromFields">
+                                                    <el-option v-for="(value,index) in fromFields" :label="value" :value="value" :key="index">
+                                                    </el-option>
+                                                </el-select>
+                                                <el-select placeholder="请选择目的字段" v-model="toFieldName">
+                                                    <el-option v-for="(value,key) in detailedSetting" :label='key' :value="key" :key="key"></el-option>
+                                                </el-select>
+                                                <el-button @click="addMap">确认添加字段</el-button>
+                                            </div>
+                                        </div>
+                                    </el-form>
+                                </el-tab-pane>
+                            </el-tabs>
                         </el-tab-pane>
                     </el-tabs>
                 </template>
@@ -234,11 +306,20 @@
                 updateTimer:{},
                 //导入导出选项卡
                 activeName : "export",
-                exportChecked: ['excel','mysql'],
+                exportChecked: ['excel'],
                 exportOptions: [
-                    {'type': 'excel', 'label': '导出到excel'},
-                    {'type': 'mysql', 'label': '导出到mysql'}
+                    {'type': 'excel', 'label': '导出到excel'}
                 ],
+                importActiveName: "Excel",
+                //导入导出
+                importFile: null,
+                mysqlConfig:{host:"localhost",user:"root",schema:null,tableName:null,port:3306,password:null,mapConfig:[]},      //mysql设置
+                fromFields:[],
+                toFields:[],
+                fromFieldName:null,
+                toFieldName:null,
+                mapOptions:[],
+                dialogOfAddingNewMap:true,
             }
         },
         components: {
@@ -283,9 +364,18 @@
             },
             //确认导入导出操作
             exportOrImportOperation:function(){
-                console.log(this.activeName + ' ' + this.exportChecked);
-                if(this.activeName === 'export' && this.exportChecked.indexOf('excel') !== -1){
-                    this.exportToExcel();
+                console.log(this.activeName);
+                if(this.activeName === 'export'){
+                    if(this.exportChecked.indexOf('excel') !== -1){
+                        this.exportToExcel();
+                    }
+                }else if(this.activeName === 'import'){
+                    console.log(this.importActiveName);
+                    if(this.importActiveName ==='Excel'){
+                        this.importFromExcel();
+                    }else if(this.importActiveName === 'Mysql'){
+                        this.importFromMysql();
+                    }
                 }
             },
             //导出到excel
@@ -295,7 +385,9 @@
                     .then(
                         (res) => {
                             res.data.taskName = '表'+this.$route.params.tableId+'导出到excel';
+                            console.log(res.data);
                             this.$emit('watchChild',res.data);
+                            this.$message('正在导出excel,点击任务列表查阅进度');
                             this.dialogOfExportOrImportData = false;
                         }
                     ).catch(
@@ -304,6 +396,136 @@
                         this.$notify({
                             title: '失败',
                             message: '网络异常',
+                            type: 'warning',
+                            duration: 4000
+                        });
+                    });
+            },
+            //选择导入文件
+            selectFile:function(){
+                let inputDOM = this.$refs.inputer;
+                // 通过DOM取文件数据
+                let files = inputDOM.files;
+                let reader = new FileReader();
+                // let that = this
+                reader.readAsDataURL(files[0]);
+                reader.onload = e => {
+                    this.importFile = e.target.result;
+                };
+
+            },
+            //从Excel导入
+            importFromExcel:function(){
+                if(this.importFile == null || this.importFile === undefined){
+                    this.$message.error('请选择导入文件');
+                }
+                let requestUrl = this.apiUrl + '/import/'+this.$route.params.tableId+'/from/excel';
+                let params = {file:this.importFile};
+                this.axios.post(requestUrl, JSON.stringify(params),
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                    .then(
+                        (res) =>{
+                            res.data.taskName = 'Excel导入到Mysql表'+this.$route.params.tableId;
+                            this.$emit('watchChild',res.data);
+                            this.$message('正在导入数据,点击任务列表查阅进度');
+                            this.dialogOfExportOrImportData = false;
+                        })
+                    .catch((error) => {
+                        console.log(error);
+                        this.$notify({
+                            title: '导入失败',
+                            message: '网络异常',
+                            type: 'warning',
+                            duration: 4000
+                        });
+                    })
+            },
+            //从Mysql导入
+            importFromMysql:function(){
+                let requestUrl = this.apiUrl + '/import/'+this.$route.params.tableId+'/from/mysql';
+                let params = JSON.parse(JSON.stringify(this.mysqlConfig));
+                params.map = {};
+                for(let x in params.mapConfig){
+                    params.map[params.mapConfig[x].fromField] = params.mapConfig[x].toField;
+                }
+                this.axios.post(requestUrl, JSON.stringify(params),
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                    .then(
+                        (res) =>{
+                            res.data.taskName = '远程Mysql导入到本地Mysql表'+this.$route.params.tableId;
+                            this.$emit('watchChild',res.data);
+                            this.$message('正在导入数据,点击任务列表查阅进度');
+                            this.dialogOfExportOrImportData = false;
+                        })
+                    .catch((error) => {
+                        console.log(error);
+                        this.$notify({
+                            title: '导入失败',
+                            message: '网络异常',
+                            type: 'warning',
+                            duration: 4000
+                        });
+                    })
+            },
+            //添加Mysql导入的映射
+            addMap:function(){
+                if(this.fromFieldName == null){
+                    this.$message({
+                        type: 'warning',
+                        message: '源字段不能为空'
+                    });
+                }else if(this.toFieldName == null){
+                    this.$message({
+                        type: 'warning',
+                        message: '目的字段不能为空'
+                    });
+                }else{
+                    this.mysqlConfig.mapConfig.push({fromField:this.fromFieldName,toField:this.toFieldName});
+                }
+            },
+            //获取目的数据库的字段
+            getFromFields:function(){
+                if(this.fromFields.length !== 0){
+                    return ;
+                }
+                console.log(this.mysqlConfig.schema);
+                let requestUrl = this.apiUrl + '/config/column';
+                this.axios.post(requestUrl, JSON.stringify(this.mysqlConfig),
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                    .then(
+                        (res) =>{
+                            if(res.status === 200){
+                                this.fromFields = [];
+                                for(let x in res.data){
+                                    this.fromFields.push(res.data[x]);
+                                }
+                                console.log(this.fromFields);
+                            }else{
+                                this.$notify({
+                                    title: '网络异常',
+                                    message: '获取数据库字段失败',
+                                    type: 'warning',
+                                    duration: 4000
+                                });
+                            }
+                        })
+                    .catch((error) => {
+                        console.log(error);
+                        this.$notify({
+                            title: '网络异常',
+                            message: '获取数据库字段失败',
                             type: 'warning',
                             duration: 4000
                         });
