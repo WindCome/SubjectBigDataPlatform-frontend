@@ -790,8 +790,6 @@
             },
             // 删除爬虫状态定时查询器
             removeSpiderProcessWatcher:function(tableId){
-                console.log("test remove watching "+tableId);
-                console.log(this.updateTimer[tableId]);
                 clearInterval(this.updateTimer[tableId]);
                 if(this.$route.params.tableId === tableId){
                     this.updateLoading = false;
@@ -846,8 +844,6 @@
                     return __sto(_cb,timeout);
                 };
                 this.updateTimer[tableId] = window.setInterval(this.getSpiderProcessStatus,1000,tableId);
-                console.log("test start watching "+tableId);
-                console.log(this.updateTimer[tableId]);
             },
             // 获取最新数据
             getLatestData: function () {
@@ -1069,12 +1065,14 @@
             if(str !== null && str !==undefined){
                 let spider =JSON.parse(str);
                 for(let x of spider){
+                    if(x === this.$route.params.tableId){
+                        this.updateLoading = true;
+                    }
                     this.startWatchingSpider(x);
                 }
             }
         },
         destroyed:function () {
-            console.log("destory");
             for(let index in this.updateTimer){
                 clearInterval(this.updateTimer[index]);
             }
