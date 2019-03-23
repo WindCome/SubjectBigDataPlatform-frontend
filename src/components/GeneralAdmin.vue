@@ -37,8 +37,10 @@
                     </el-form-item>
                     <el-form-item label='详情:' label-width="120px">
                         <el-input type="textarea" :autosize="{minRows:3,maxRows:15}" v-model="logInfo.detail" readonly=""></el-input>
-                        </el-form-item>
-                    <!---->
+                    </el-form-item>
+                    <el-form-item label-width="120px">
+                        <el-button type="primary" round @click="exportSpiderLog">导出日志</el-button>
+                    </el-form-item>
                 </el-form>
             </el-dialog>
             <!--配置信息对话框-->
@@ -615,6 +617,10 @@
                             duration: 4000
                         });
                     });
+            },
+            //导出爬虫日志
+            exportSpiderLog:function(){
+                window.location.href = this.apiUrl + '/spider/log/download/' + this.$route.params.tableId;
             },
             // 保存更新配置
             saveConfig: function () {
