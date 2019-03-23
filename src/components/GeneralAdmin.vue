@@ -790,33 +790,35 @@
             },
             // 删除爬虫状态定时查询器
             removeSpiderProcessWatcher:function(tableId){
+                console.log("test remove watching "+tableId);
+                console.log(this.updateTimer[tableId]);
                 clearInterval(this.updateTimer[tableId]);
-                this.updateLoading = false;
+                if(this.$route.params.tableId === tableId){
+                    this.updateLoading = false;
+                }
+                let str = sessionStorage.getItem("spiderProcess");
+                if(str !== null && str !==undefined){
+                    let spider = new Set(JSON.parse(str));
+                    spider.delete(tableId);
+                    sessionStorage.setItem("spiderProcess",JSON.stringify(spider));
+                }
             },
             //查询爬虫运行状态
-            getSpiderProcessStatus:function(tid){
-                this.axios.get(this.apiUrl + '/generateUpgrade/result/' + tid)
+            getSpiderProcessStatus:function(tableId){
+                this.axios.get(this.apiUrl + '/generateUpgrade/result/' + tableId)
                     .then(
                         (res) => {
                             if(res.data){
-                                this.removeSpiderProcessWatcher(this.$route.params.tableId);
+                                this.removeSpiderProcessWatcher(tableId);
                                 this.$notify({
-                                    title: '成功',
-                                    message: '成功获取最新数据，请查看更新结果',
+                                    title: '爬虫运行结束',
+                                    message: '成功获取表'+tableId+'的最新数据',
                                     type: 'success',
                                     duration: 4000
                                 });
                                 this.getLatestDataLoading = false;
                                 this.dialogOfGetLatestData = false;
                             }
-                            // else {
-                            //     this.$notify({
-                            //         title: '更新失败',
-                            //         message: '爬虫运行过程中发生了错误',
-                            //         type: 'error',
-                            //         duration: 4000
-                            //     });
-                            // }
                         }
                     )
                     .catch(
@@ -833,6 +835,20 @@
                         }
                     );
             },
+            //监听爬虫进程
+            startWatchingSpider:function(tableId){
+                let __sto = setInterval;
+                window.setInterval = function(callback,timeout,param){
+                    let args = Array.prototype.slice.call(arguments,2);
+                    let _cb = function(){
+                        callback.apply(null,args);
+                    };
+                    return __sto(_cb,timeout);
+                };
+                this.updateTimer[tableId] = window.setInterval(this.getSpiderProcessStatus,1000,tableId);
+                console.log("test start watching "+tableId);
+                console.log(this.updateTimer[tableId]);
+            },
             // 获取最新数据
             getLatestData: function () {
                 this.updateLoading = true;
@@ -840,15 +856,16 @@
                     .then(
                         (res) => {
                             if(res.data >0){
-                                let __sto = setInterval;
-                                window.setInterval = function(callback,timeout,param){
-                                    let args = Array.prototype.slice.call(arguments,2);
-                                    let _cb = function(){
-                                        callback.apply(null,args);
-                                    };
-                                    return __sto(_cb,timeout);
-                                };
-                                this.updateTimer[this.$route.params.tableId] = window.setInterval(this.getSpiderProcessStatus,1000,res.data);
+                                this.startWatchingSpider(this.$route.params.tableId);
+                                let spiderIdStr = sessionStorage.getItem("spiderIds");
+                                let spiderIds;
+                                if(spiderIdStr !== null && spiderIdStr !== undefined){
+                                    spiderIds = JSON.parse(spiderIdStr);
+                                }else{
+                                    spiderIds = new Set();
+                                }
+                                spiderIds.add(this.$route.params.tableId);
+                                sessionStorage.setItem("spiderProcess",JSON.stringify(spiderIds));
                                 this.dialogOfGetLatestData = false;
                                 this.$notify({
                                     title: '正在更新',
@@ -1048,6 +1065,19 @@
         },
         created: function () {
             this.getPageSetting();
+            let str = sessionStorage.getItem("spiderProcess");
+            if(str !== null && str !==undefined){
+                let spider =JSON.parse(str);
+                for(let x of spider){
+                    this.startWatchingSpider(x);
+                }
+            }
+        },
+        destroyed:function () {
+            console.log("destory");
+            for(let index in this.updateTimer){
+                clearInterval(this.updateTimer[index]);
+            }
         }
     }
 </script>
