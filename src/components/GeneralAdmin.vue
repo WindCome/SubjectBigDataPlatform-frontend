@@ -68,9 +68,9 @@
                             <el-tabs tab-position="left" v-model="importActiveName">
                                 <el-tab-pane label="Excel" name="Excel">
                                     <input type="file" @change="selectFile" ref="inputer">
+                                    <el-button style="float: right" type="primary" @click="getExcelImportTemplate">获取导入模板</el-button>
                                 </el-tab-pane>
                                 <el-tab-pane label="Mysql" name="Mysql">
-                                    <!--TODO-->
                                     <el-form label-width="5rem" style="height: auto">
                                         <div align="center" style="font-size: large">连接信息</div>
                                         <table>
@@ -379,6 +379,10 @@
                         this.importFromMysql();
                     }
                 }
+            },
+            //获取excel导入模板
+            getExcelImportTemplate:function(){
+                window.location.href = this.apiUrl + '/download/template/excel/' + this.$route.params.tableId;
             },
             //导出到excel
             exportToExcel:function(){
@@ -695,8 +699,7 @@
                             },
                         }).then(
                         (res) => {
-
-                            if (res.data !== undefined) {   // 添加成功
+                            if (!res.data) {   // 添加成功
                                 this.$notify({
                                     title: '成功',
                                     message: '信息更新成功',
