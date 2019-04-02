@@ -32,6 +32,48 @@
                     <el-form-item label='日志生成时间:' label-width="120px">
                         <span>{{logInfo.generateAtTime}}</span>
                     </el-form-item>
+                    <el-form-item label='上次爬取统计' label-width="120px">
+                        <el-table border
+                                  highlight-current-row
+                                  :data="logInfo.lastURLCountView">
+                            <!--展示信息-->
+                            <el-table-column label="来源URL">
+                                <template slot-scope="scope">
+                                    <p class="p1">
+                                        <span>{{scope.row['url']}}</span>
+                                    </p>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="数量">
+                                <template slot-scope="scope">
+                                    <p class="p1">
+                                        <span>{{scope.row['count']}}</span>
+                                    </p>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </el-form-item>
+                    <el-form-item label='本次爬取统计' label-width="120px">
+                        <el-table border
+                                  highlight-current-row
+                                  :data="logInfo.currentURLCountView">
+                            <!--展示信息-->
+                            <el-table-column label="来源URL">
+                                <template slot-scope="scope">
+                                    <p class="p1">
+                                        <span>{{scope.row['url']}}</span>
+                                    </p>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="数量">
+                                <template slot-scope="scope">
+                                    <p class="p1">
+                                        <span>{{scope.row['count']}}</span>
+                                    </p>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </el-form-item>
                     <el-form-item label='爬取耗时:' label-width="120px">
                         <span>{{logInfo.spendTime}}ms</span>
                     </el-form-item>
